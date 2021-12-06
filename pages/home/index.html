@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSR</title>
+    <link rel="stylesheet" type="text/css" href="./css/index.css" />
+    <script src="./js/index.js" ></script>
+    <style type="text/css">
+        h1 {
+            color: red; 
+            box-shadow: 0 0 4px black;
+        }
+    </style>
+</head>
+<body>
+    <!-- #get url=http://localhost:5000/pageInfo id=pageInfo data=response.data -->
+   
+    <h1>{{pageInfo.title}}</h1>
+    <h2>{{pageInfo.subTitle}}</h2>
+    <p>{{pageInfo.content}}</p>
+    <h1>sdfdsfdsfs</h1>
+
+    <!-- #get url=http://localhost:5000/list id=list data=response.data -->
+    <ul>
+        {{#each list}}
+            <li>{{this.label}} : {{this.value}}</li>
+        {{/each}}
+    </ul>
+    AAAsdfdsfdsfdsAA
+    
+</body>
+</html>
