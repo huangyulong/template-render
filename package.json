@@ -5,30 +5,24 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "html": "webpack --config build/webpack.config.js --progress",
     "start": "node ./server/index.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "express": "^4.17.1",
-    "next": "^12.0.4",
     "ws": "^8.3.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.16.0",
     "@babel/core": "^7.16.0",
     "@babel/preset-env": "^7.16.4",
-    "babel-loader": "^8.2.3",
     "gulp": "^4.0.2",
     "gulp-babel": "^8.0.0",
     "gulp-sass": "^5.0.0",
     "gulp-typescript": "^6.0.0-alpha.1",
     "node-watch": "^0.7.2",
     "sass": "^1.43.5",
-    "sass-loader": "^12.3.0",
-    "typescript": "^4.5.2",
-    "webpack": "^5.64.4",
-    "webpack-cli": "^4.9.1"
+    "typescript": "^4.5.2"
   }
 }

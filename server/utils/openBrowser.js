@@ -1,3 +1,5 @@
+const child_process = require('child_process')
+
 function openBrowser (url) {
     switch(process.platform) {
         case 'darwin':
