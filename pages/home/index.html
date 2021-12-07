@@ -4,31 +4,23 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSR</title>
+    <title>home</title>
     <link rel="stylesheet" type="text/css" href="./css/index.css" />
-    <script src="./js/index.js" ></script>
-    <style type="text/css">
-        h1 {
-            color: red; 
-            box-shadow: 0 0 4px black;
-        }
-    </style>
 </head>
 <body>
-    <!-- #get url=http://localhost:5000/pageInfo id=pageInfo data=response.data -->
-   
-    <h1>{{pageInfo.title}}</h1>
-    <h2>{{pageInfo.subTitle}}</h2>
-    <p>{{pageInfo.content}}</p>
-    <h1>sdfdsfdsfs</h1>
-
-    <!-- #get url=http://localhost:5000/list id=list data=response.data -->
-    <ul>
+     <!-- #get url=http://localhost:3333/list id=list data=response.data -->
+     <ul class="list-content">
         {{#each list}}
-            <li>{{this.label}} : {{this.value}}</li>
+            <li class="list-item">
+                <a class="list-a" href="http://localhost:3333/article/index.html?id={{this.id}}">
+                    <h1 class="list-title">{{this.title}}</h1>
+                    <p class="list-subject">{{this.subject}}</p>
+                    <p class="list-author">{{this.author}}   {{this.publishTime}}</p>
+                </a>
+            </li>
         {{/each}}
     </ul>
-    AAAsdfdsfdsfdsAA
     
+    <script src="js/index.js"></script>
 </body>
 </html>

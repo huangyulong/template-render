@@ -1,8 +1,13 @@
 const path = require('path')
 const fs = require('fs')
+const chalk = require('chalk')
+const process = require('process')
 const { execSync } = require('child_process')
-const transform = require('./compilerHtml')
+const {transformHtml, transformServerHtml} = require('./compilerHtml')
 const config = require('../configs/config')
+const dealPath = require('../server/utils/dealPath')
+
+const rootPath = process.cwd()
 
 let gulpPlugin = {}
 
@@ -33,21 +38,27 @@ function findFileExtension(filePath) {
 }
 
 
-
 // 编译文件
 function compilerOne(filePath, type) {
+    if(!(fs.existsSync(filePath) && fs.statSync(filePath).isFile())) { return }
+    if(/\.DS_Store/.test(filePath)) { return }
+
+    const filePathname = filePath.replace(rootPath, '')
+    const pageName = dealPath.findCurPage(filePath)
+
+    // 记录编译时间
     if(!type) {
-        console.time('compiler time')
-        console.log('start compiler: ' + filePath)
+        console.time('compiler time')  
     }
+    console.log(chalk.blue('compiler: ' + filePathname +' ...'))
+   
     // console.log('filePath===',filePath)
-    const targetFilePath = filePath
-    const outputFilePath = filePath.replace('pages', 'dist')
-    const lastDirIdx = outputFilePath.lastIndexOf('/')
-    // console.log('lastDirIdx===',lastDirIdx)
-    const outputPath = outputFilePath.substring(0, lastDirIdx+1)
+    const targetFilePath = filePath // 编译目标文件路径
+    const outputFilePath = filePath.replace('pages', 'dist') // 编译后输出文件路径
+    const outputPath =  dealPath.findDir(outputFilePath)  // 输出文件目录
     // console.log('outputPath===',outputPath)
 
+    // 判读文件夹是否存在
     if(!fs.existsSync(outputPath)) {
         fs.mkdirSync(outputPath, { recursive: true })
     }
@@ -59,8 +70,10 @@ function compilerOne(filePath, type) {
     if(extension === 'html') {
         // 对于html单独进行编译
         const html = fs.readFileSync(targetFilePath, 'utf8')
-        const newHtml = transform(html, outputPath)
+        const newHtml = transformHtml(html, pageName)
+        const serverHtml = transformServerHtml(html, pageName)
         fs.writeFileSync(outputFilePath, newHtml)
+        fs.writeFileSync(outputPath+'/server.js', serverHtml)
     }else if(gulpPlugin.hasOwnProperty(extension)) {
         // 配置了插件的执行插件
         execSync(`./node_modules/.bin/gulp --env ${targetFilePath}=${outputPath} -f ./compiler/gulpCompiler.js ${extension}`)
@@ -69,11 +82,9 @@ function compilerOne(filePath, type) {
         fs.copyFileSync(targetFilePath, outputFilePath);
     }
 
+    console.log(chalk.blue('compiler: ' + filePathname + '  success '))
     if(!type) {
-        console.log('compiler: ' + filePath + '  success ')
         console.timeEnd('compiler time')
-    }else {
-        console.log('compiler: ' + filePath + '  success ')
     }
    
 }
@@ -85,7 +96,7 @@ function initCompiler() {
     }
 
     console.time('time')
-    console.log('compiler start ...')
+    console.log(chalk.cyan('compiler start ...'))
 
     const readDir = (dir) => {
         if(!(fs.statSync(dir).isDirectory())) {
@@ -105,7 +116,7 @@ function initCompiler() {
 
     readDir(path.join(__dirname, '../pages'))
 
-    console.log('compiler success')
+    console.log(chalk.green('compiler success'))
     console.timeEnd('time')
 
 }

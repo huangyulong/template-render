@@ -1,16 +1,20 @@
 {
-  "name": "mynext",
+  "name": "template-render",
   "version": "1.0.0",
-  "description": "",
+  "description": "render template",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node ./server/index.js"
+    "start": "node ./server/index.js",
+    "test": "jest"
   },
-  "author": "",
+  "author": "hyl",
   "license": "ISC",
   "dependencies": {
+    "axios": "^0.24.0",
+    "chalk": "^4.1.2",
     "express": "^4.17.1",
+    "handlebars": "^4.7.7",
+    "js-beautify": "^1.14.0",
     "ws": "^8.3.0"
   },
   "devDependencies": {
@@ -21,6 +25,7 @@
     "gulp-babel": "^8.0.0",
     "gulp-sass": "^5.0.0",
     "gulp-typescript": "^6.0.0-alpha.1",
+    "jest": "^27.4.3",
     "node-watch": "^0.7.2",
     "sass": "^1.43.5",
     "typescript": "^4.5.2"

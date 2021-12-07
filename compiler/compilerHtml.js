@@ -1,186 +1,202 @@
 const fs = require('fs')
 const path = require('path')
 const config = require('../configs/config')
+const beautify_js = require('js-beautify').js
+const beautify_html = require('js-beautify').html
+const dealPath = require('../server/utils/dealPath')
 
-const renderType = 'client'
+function transformServerHtml(html, pageName) {
 
-function parseHtml_bak(html) {
-    // 拿到基础页面除body以外的部分，模板渲染只是body部分
-    const findBodyStart = html.indexOf('<body>')
-    const findBodyEnd = html.indexOf('</body>')
-    const findHeadEnd = html.indexOf('</head>')
-    let htmlStart = html.substring(0, findHeadEnd)
-    const htmlMiddle = html.substring(findHeadEnd, findBodyStart+6)
-    const htmlEnd = html.substring(findBodyEnd, )
-    const template =`
-    <script>
-        const template =\`${html.substring(findBodyStart+6, findBodyEnd)}\` 
-    </script>`
+    let renderTemplate = `const encodeTemplate = '${encodeURI(html.replace(/<!--\s*#(\w+).*-->/ig, ""))}';`
+    
+    // 服务端生成的内容先不注入ws.js, 因为服务端内容修改后需要重启服务才能看到更新后的内容
+    // if(config.mode === 'development') {
+    //     renderTemplate = `const encodeTemplate = '${devRenderTemplate(html)}'`
+    // }else {
+    //     renderTemplate = `const encodeTemplate = '${encodeURI(html.replace(/<!--\s*#(\w+).*-->/ig, ""))}';`
+    // }
 
-    let scriptContent = `<script>
-    (async function() { 
-        let data = {};
-    `
+    let renderHtml = 'let data = {};'
+
     const reg = /<!--\s*#(\w+).*-->/ig
     let allConfigs = html.match(reg)
-    console.log(allConfigs)
 
-    allConfigs.forEach((item) => {
-        const configs = item.replace(/<!--\s*/ig, '').replace(/\s*-->/ig, '').split(/\s+/)
-        console.log('--configs--', configs)
-        const type = configs && configs[0] ? configs[0].substring(1,) : ''
-        let request = {}
-        configs.forEach((item, i) => {
-            if(i !== 0) {
-                const idx = item.indexOf('=')
-                request[item.substring(0, idx)] = item.substring(idx+1,)
+    if(allConfigs && allConfigs.length) {
+
+        allConfigs.forEach((item) => {
+            const configs = item.replace(/<!--\s*/ig, '').replace(/\s*-->/ig, '').split(/\s+/)
+            const type = configs && configs[0] ? configs[0].substring(1,) : ''
+            let request = {}
+            configs.forEach((item, i) => {
+                if(i !== 0) {
+                    const kv = item.split('=')
+                    request[kv[0]] = kv[1]
+                }
+            })
+        
+            // console.log('request==',request)
+    
+            switch(type) {
+                case 'get':
+                    renderHtml += (createGetFn(request, 'server', pageName) + '')
+                    break;
+                case 'post':
+                    renderHtml += (createPostFn(request, 'server', pageName) + '')
+                    break;
+                default: 
+                    break;
             }
+    
         })
-    
-        console.log(request)
+    }
 
-        // console.log('--type--', type)
-        switch(type) {
-            case 'get':
-                scriptContent += (createGetFn(request) + '')
-                break;
-            case 'post':
-                scriptContent += (createPostFn(request) + '')
-                break;
-            default: 
-                break;
-        }
+    let serverRender = `
+        const axios = require('axios')
 
-    })
+        module.exports = async () => {
+    `
+    serverRender = serverRender + renderTemplate + renderHtml + 
+    `
+        const template = decodeURI(encodeTemplate)
+        ${require(path.join(__dirname, '../server/static/template-engine/'+config.templateEngine.render))().serverRender()}
+        return dom
+    `
+    + '}'
 
-    scriptContent += 
-    `   const handleTemplate = Handlebars.compile(template)
-        const dom = handleTemplate(data)
-        document.querySelector('body').innerHTML = dom
-    }())
-    </script>`
+    return beautify_js(serverRender)
 
-    return htmlStart + `<script src="http://localhost:${config.port}/static/ws.js"></script><script src="http://localhost:${config.port}/static/handlebars.js"></script>` +
-        htmlMiddle + template + scriptContent + htmlEnd
-    
 }
 
 
-function parseHtml(html) {
-    // 拿到基础页面除body以外的部分，模板渲染只是body部分
-    const findBodyStart = html.indexOf('<body>')
-    const findBodyEnd = html.indexOf('</body>')
-    const findHeadEnd = html.indexOf('</head>')
-    let htmlStart = html.substring(0, findHeadEnd)
-    const htmlMiddle = html.substring(findHeadEnd, findBodyStart+6)
-    const htmlEnd = html.substring(findBodyEnd, )
+function transformHtml(html, pageName) {
 
-    ////////
+    // 需要渲染的模板
+    let renderTemplate = ''
 
-    const baseHtml = '<!DOCTYPE html><html><head></head><body>'
+    // 判断是否是开发环境，开发环境需要加入ws.js(用来做页面更改后刷新浏览器)
+    if(config.mode === 'development') {
+        renderTemplate = devRenderTemplate(html)
+    }else {
+        renderTemplate = encodeURI(html.replace(/<!--\s*#(\w+).*-->/ig, ""))
+    }
 
-    const template =`<script>const template ='${encodeURI(html.replace(/<!--\s*#(\w+).*-->/ig, ''))}'</script>`
+    // 做客户端渲染时服务端发送的页面内容
+    let renderHtml = `<!DOCTYPE html>
+    <html lang="en">
+        <head></head>
+        <body>
+            <script src="http://localhost:${config.port}/static/template-engine/${config.templateEngine.name}"></script>
+            <script>
+                const renderTemplate = '${renderTemplate}'
+            </script>
+            <script>(async function(){let data={};`
 
-    const bodyFirstScriptIdx = html.indexOf('<script', findBodyStart)
-    html = html.substring(0, bodyFirstScriptIdx) + `<script src="http://localhost:${config.port}/static/ws.js" ></script>` +
-        html.substring(bodyFirstScriptIdx, )
-  
-
-
-    let scriptContent = `<script>
-    (async function() { 
-        let data = {};
-    `
+    // 检测模板中特殊语法
     const reg = /<!--\s*#(\w+).*-->/ig
     let allConfigs = html.match(reg)
-    console.log(allConfigs)
 
-    allConfigs.forEach((item) => {
-        const configs = item.replace(/<!--\s*/ig, '').replace(/\s*-->/ig, '').split(/\s+/)
-        console.log('--configs--', configs)
-        const type = configs && configs[0] ? configs[0].substring(1,) : ''
-        let request = {}
-        configs.forEach((item, i) => {
-            if(i !== 0) {
-                const kv = item.split('=')
-                request[kv[0]] = kv[1]
-            }
-        })
+    if(allConfigs && allConfigs.length) {
+
+        allConfigs.forEach((item) => {
+            const configs = item.replace(/<!--\s*/ig, '').replace(/\s*-->/ig, '').split(/\s+/)
+            const type = configs && configs[0] ? configs[0].substring(1,) : ''
+            let request = {}
+            configs.forEach((item, i) => {
+                if(i !== 0) {
+                    const kv = item.split('=')
+                    request[kv[0]] = kv[1]
+                }
+            })
+        
+            // console.log('request==',request)
     
-        console.log(request)
+            switch(type) {
+                case 'get':
+                    renderHtml += (createGetFn(request, 'client', pageName) + '')
+                    break;
+                case 'post':
+                    renderHtml += (createPostFn(request, 'client', pageName) + '')
+                    break;
+                default: 
+                    break;
+            }
+    
+        })
+    }
 
-        // console.log('--type--', type)
-        switch(type) {
-            case 'get':
-                scriptContent += (createGetFn(request) + '')
-                break;
-            case 'post':
-                scriptContent += (createPostFn(request) + '')
-                break;
-            default: 
-                break;
-        }
 
-    })
-
-    scriptContent += 
-    `   
-        const renderDOM = decodeURI(template)
-        const handleTemplate = Handlebars.compile(renderDOM)
-        data = {
-            pageInfo: {
-                title: '日媒：岸田文雄与欧洲理事会主席米歇尔通话，还扯起了所谓“中国动向”',
-                subTitle: '【环球网报道】共同社消息',
-                content: '【环球网报道】共同社消息，日本首相岸田文雄29日与欧洲理事会主席米歇尔进行了约20分钟的电话会谈，双方一致同意为实现所谓“自由开放的印度太平洋”切实推进合作。米歇尔原计划访问日本并于当天在东京与岸田举行会谈，但鉴于欧洲等地新冠疫情扩大而推迟访日。'        
-            },
-            list: [
-                {label: 'aaaaaaa', value: 'lsfdsfjdklsfds'},
-                {label: 'aaaaaaa', value: 'lsfdsfjdklsfds'},
-                {label: 'aaaaaaa', value: 'lsfdsfjdklsfds'},
-                {label: 'aaaaaaa', value: 'lsfdsfjdklsfds'},
-                {label: 'aaaaaaa', value: 'lsfdsfjdklsfds'},
-            ]
-        }
-        const dom = handleTemplate(data)
+    renderHtml += `
+        const template = decodeURI(renderTemplate)
+        ${require(path.join(__dirname, '../server/static/template-engine/'+config.templateEngine.render))().clientRender()}
         document.write(dom)
-    }())
-    </script>`
+        })()
+    </script>
+    </body>
+    </html>
+    `
 
-    return baseHtml + `<script src="http://localhost:${config.port}/static/handlebars.js" ></script>` +
-        template + scriptContent + '</body></html>'
-    
+    return beautify_html(renderHtml)
+
+}
+
+// dev环境时模板中要注入内容，生成新的模板
+function devRenderTemplate(html) {
+    // 注入ws.js
+    const injectWsJs = `<script src="http://localhost:${config.port}/static/ws.js"></script>`
+
+    // 将模板中的特殊语法去掉
+    let newHtml = html.replace(/<!--\s*#(\w+).*-->/ig, '')
+    const bodyDomEnd = newHtml.indexOf('</body>')
+    newHtml = newHtml.substring(0, bodyDomEnd) + injectWsJs + newHtml.substring(bodyDomEnd, )
+
+    return encodeURI(newHtml)
+
 }
 
 
+function createGetFn(request, renderType, pageName) {
 
-
-function createGetFn(request) {
-
-    console.log(request)
+    // console.log(request)
     let url = request.url
     if(request.url && config.mock) {
-        let pathnameIdx = request.url.indexOf('/', 9)
-        let pathName = request.url.substring(pathnameIdx, )
-        url = 'http://localhost:'+config.port+'/mock/home'+ pathName
+        let pathName = dealPath.findUrlPathname(request.url)
+        url = `http://localhost:${config.port}/mock/${pageName}${pathName}`
     }
 
     if(renderType === 'client') {
-    return `
-    function get_${request.id}() {
-        return new Promise((resolve, reject) => {
-            fetch('${url}').then((res) => res.json())
-            .then((response) => {
-                resolve(${request.data})
-            }).catch((err) => {
-                console.log(err)
-                reject(err)
-            })
-        })
-    }
+        return `
+            function get_${request.id}() {
+                return new Promise((resolve, reject) => {
+                    fetch('${url}').then((res) => res.json())
+                    .then((response) => {
+                        resolve(${request.data})
+                    }).catch((err) => {
+                        console.log(err)
+                        reject(err)
+                    })
+                })
+            }
 
-    data['${request.id}'] = await get_${request.id}()
-    `
+            data['${request.id}'] = await get_${request.id}()
+        `
     }else if(renderType === 'server') {
+        return `
+            function get_${request.id}() {
+                return new Promise((resolve, reject) => {
+                    axios({method: 'GET', url: '${url}'})
+                        .then((res) => {
+                            let response = res.data
+                            resolve(${request.data})
+                        }).catch((err) => {
+                            console.log(err)
+                            reject(err)
+                        })
+                })
+            }
+
+            data['${request.id}'] = await get_${request.id}()
+        
+        `
 
     }else {
         return ''
@@ -189,39 +205,58 @@ function createGetFn(request) {
   
 }
 
-function createPostFn(request) {
+function createPostFn(request, renderType, pageName) {
 
-    console.log(request)
+    // console.log(request)
     let url = request.url
+
     if(request.url && config.mock) {
-        let pathnameIdx = request.url.indexOf('/', 9)
-        let pathName = request.url.substring(pathnameIdx, )
-        url = 'http://localhost:'+config.port+'/mock/home'+ pathName
+        let pathName = dealPath.findUrlPathname(request.url)
+        url = `http://localhost:${config.port}/mock/${pageName}${pathName}`
     }
 
     if(renderType === 'client') {
-    return `
-    function get_${request.id}() {
-        return new Promise((resolve, reject) => {
-            fetch({
-                method: 'POST',
-                url: '${url}',
-                header:'${request.header}',
-                body: ${request.body}
-            }).then((res) => res.json())
-            .then((response) => {
-                resolve(${request.data})
-            }).catch((err) => {
-                console.log(err)
-                reject(err)
-            })
-        })
-    }
+        return `
+            function post_${request.id}() {
+                return new Promise((resolve, reject) => {
+                    fetch('${url}',{
+                        method: 'POST',
+                        header:${request.header},
+                        body: ${request.body}
+                    }).then((res) => res.json())
+                    .then((response) => {
+                        resolve(${request.data})
+                    }).catch((err) => {
+                        console.log(err)
+                        reject(err)
+                    })
+                })
+            }
 
-    data[${request.id}] = await get_${request.id}()
-    `
+            data['${request.id}'] = await post_${request.id}()
+        `
     }else if(renderType === 'server') {
+        return `
+            function post_${request.id}() {
+                return new Promise((resolve, reject) => {
+                    axios({
+                        method: 'POST',
+                        url: '${url}',
+                        header:${request.header},
+                        data: ${request.body}
+                    })
+                    .then((res) => {
+                        let response = res.data
+                        resolve(${request.data})
+                    }).catch((err) => {
+                        console.log(err)
+                        reject(err)
+                    })
+                })
+            }
 
+            data['${request.id}'] = await post_${request.id}()
+        `
     }else {
         return ''
     }
@@ -229,26 +264,5 @@ function createPostFn(request) {
     
 }
 
-
-
-
-
-function transform(str, outputPath) {
-    console.log('=======',outputPath)
-   
-    if(!fs.existsSync(outputPath)) {
-        fs.mkdirSync(outputPath, {recursive: true})
-    }
-    const content = parseHtml(str)
-    return content
-
-    // 测试用
-    // str = fs.readFileSync(path.join(__dirname, '../pages/home/index.html'), 'utf8')
-    // const content = parseHtml(str)
-    // fs.writeFileSync(path.join(__dirname, '../dist/home/index.html'), content)
-    
-}
-
-// transform()
-
-module.exports = transform
+exports.transformHtml = transformHtml
+exports.transformServerHtml = transformServerHtml

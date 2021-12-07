@@ -12,8 +12,8 @@ if(process.argv[2] === '--env') {
 let parallelArgs = []
 
 config.plugins.forEach((item) => {
-    parallelArgs.push(require(item.plugin)(srcPath, outputPath))
-    exports[item.test] = require(item.plugin)(srcPath, outputPath)
+    parallelArgs.push(require('./gulpPlugins/'+item.plugin)(srcPath, outputPath))
+    exports[item.test] = require('./gulpPlugins/'+item.plugin)(srcPath, outputPath)
 })
 
 exports.default = parallel(parallelArgs)

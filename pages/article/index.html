@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>article</title>
+    <link rel="stylesheet" type="text/css" href="css/index.css" />
+</head>
+<body>
+    <div class="container">
+        <!-- #get url=http://localhost:3333/pageInfo id=pageInfo data=response.data  -->
+        <h1>{{pageInfo.title}}</h1>
+        <p>{{pageInfo.author}}</p>
+        <p>{{pageInfo.publishTime}}</p>
+       
+        <div class="content">
+            {{pageInfo.content}}
+        </div>
+
+    </div>
+   
+    <script src="./js/index.js"></script>
+</body>
+</html>

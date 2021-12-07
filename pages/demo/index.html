@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{pageInfo.title}}</title>
+    <link rel="stylesheet" type="text/css" href="./css/index.css" />
+</head>
+<body>
+    <div class="container">
+      
+        <!-- #post url=http://localhost:3333/list id=list header={} body={} data=response.data -->
+        <ul class="list-content">
+            {{#each list}}
+                <li class="list-item">
+                    <h1 class="list-title">{{this.title}}</h1>
+                    <p class="list-subject">{{this.subject}}</p>
+                    <p class="list-author">{{this.author}}   {{this.publishTime}}</p>
+                </li>
+            {{/each}}
+        </ul>
+
+
+    <br />
+      <!-- #get url=http://localhost:3333/pageInfo id=pageInfo data=response.data -->
+        
+      <h1>{{pageInfo.title}}</h1>
+      <br/>
+      <h2>{{pageInfo.subTitle}}</h2>
+      <p>{{pageInfo.content}}</p>
+
+    </div>
+
+    <script src="./js/index.js" ></script>
+
+</body>
+</html>
